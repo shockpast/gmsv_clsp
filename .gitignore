@@ -1,0 +1,5 @@
+development/module/projects
+development/module/premake5
+.clangd
+build.sh
+gen.sh
