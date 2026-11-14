@@ -1,6 +1,6 @@
 name: Build
 
-on: 
+on:
   push:
     paths:
       - '.github/workflows/compile.yml'
@@ -15,6 +15,6 @@ jobs:
   build:
     uses: RaphaelIT7/gmod-common-module-base/.github/workflows/compile.yml@workflow
     with:
-      PROJECT_NAME: "template"
+      PROJECT_NAME: "clsp"
       BUILD_64x: "true"
       REALM: "sv"
