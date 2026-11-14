@@ -10,6 +10,8 @@ newoption({
 
 local gmcommon = assert(_OPTIONS.gmcommon or os.getenv("GARRYSMOD_COMMON"),
     "you didn't provide a path to your garrysmod_common (https://github.com/danielga/garrysmod_common) directory")
+
+include("../bootil/premake5.lua")
 include(gmcommon)
 
 CreateWorkspace({name = "clsp", abi_compatible = false})
@@ -25,11 +27,6 @@ CreateWorkspace({name = "clsp", abi_compatible = false})
         IncludeSDKCommon()
         IncludeSDKTier0()
         IncludeSDKTier1()
-        -- IncludeSDKTier3()
-        -- IncludeSDKMathlib()
-        --IncludeSDKRaytrace()
-        --IncludeSDKBitmap()
-        --IncludeSDKVTF()
-        --IncludeSteamAPI()
         IncludeDetouring()
         IncludeScanning()
+        IncludeBootil()

@@ -30,8 +30,4 @@ public:
 	virtual void			OnEdictFreed(const edict_t* edict);
 	virtual bool			LuaInit();
 	virtual void			LuaShutdown();
-  virtual int       GetCommandIndex() { return m_iClientCommandIndex; }
-
-private:
-	int m_iClientCommandIndex;
 };
