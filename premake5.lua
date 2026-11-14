@@ -5,11 +5,13 @@ PROJECT_GENERATOR_VERSION = 3
 newoption({
     trigger = "gmcommon",
     description = "Sets the path to the garrysmod_common (https://github.com/danielga/garrysmod_common) directory",
-    default = "../garrysmod_common"
+    default = "development/garrysmod_common"
 })
 
 local gmcommon = assert(_OPTIONS.gmcommon or os.getenv("GARRYSMOD_COMMON"),
     "you didn't provide a path to your garrysmod_common (https://github.com/danielga/garrysmod_common) directory")
+
+include("development/bootil/premake5.lua")
 include(gmcommon)
 
 CreateWorkspace({name = "clsp", abi_compatible = false})
@@ -18,18 +20,13 @@ CreateWorkspace({name = "clsp", abi_compatible = false})
     -- Can define "manual_files", which allows you to manually add files to the project,
     -- instead of automatically including them from the "source_path"
     -- Can also define "abi_compatible", for project specific compatibility
-    CreateProject({serverside = true, manual_files = false})
+    CreateProject({serverside = true, source_path = "source", manual_files = false})
         -- Remove some or all of these includes if they're not needed
         IncludeHelpersExtended()
         IncludeLuaShared()
         IncludeSDKCommon()
         IncludeSDKTier0()
         IncludeSDKTier1()
-        --IncludeSDKTier3()
-        --IncludeSDKMathlib()
-        --IncludeSDKRaytrace()
-        --IncludeSDKBitmap()
-        --IncludeSDKVTF()
-        --IncludeSteamAPI()
         IncludeDetouring()
         IncludeScanning()
+        IncludeBootil()
