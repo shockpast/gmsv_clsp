@@ -316,7 +316,7 @@ void DataPack::SendFileToClient(GModDataPack* datapack /* ecx */, int clientId, 
 	self->SendLuaFile(file, clientId, fileId);
 }
 
-void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, GarrysMod::Lua::File* file, bool recompress)
+void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, LuaFile* file, bool recompress)
 {
 	if (g_pDataPack == nullptr)
 		g_pDataPack = datapack;

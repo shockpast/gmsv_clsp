@@ -31,6 +31,17 @@ struct ProcessedFile {
 	std::array<unsigned char, 32> hash{};
 };
 
+struct LuaFile {
+  int time;
+  std::string name;
+  std::string source;
+  std::string contents;
+  Bootil::AutoBuffer compressed;
+  int unk000;
+  unsigned int timesLoadedServer;
+  unsigned int timesLoadedClient;
+};
+
 class DataPack {
   /* functions */
 public:
@@ -48,7 +59,7 @@ public:
   void CollectResults();
 
   static void SendFileToClient(GModDataPack* datapack, int clientId, int fileId);
-  static void AddOrUpdateFile(GModDataPack* datapack, GarrysMod::Lua::File* file, bool recompress);
+  static void AddOrUpdateFile(GModDataPack* datapack, LuaFile* file, bool recompress);
   static void OnFilesRequested(GModDataPack* datapack, int clientId, bf_read* message, int bits);
 
   private:
