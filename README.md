@@ -35,7 +35,7 @@ end)
 
 ## support
 
-windows or linux64 support is not planned, since most of owners use `main` or `dev` branches
+windows or linux64 support is not planned
 
 ## installation
 
