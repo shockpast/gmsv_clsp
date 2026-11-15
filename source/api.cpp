@@ -52,6 +52,9 @@ void clsp::api::Initialize(GarrysMod::Lua::ILuaBase* LUA)
 	LUA->CreateTable();
 		LUA->PushCFunction(clsp_add);
 		LUA->SetField(-2, "add");
+
+		LUA->PushString("b004b");
+		LUA->SetField(-2, "VERSION");
 	LUA->SetField(-2, "clsp");
 
 	LUA->Pop();

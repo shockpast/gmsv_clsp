@@ -15,7 +15,6 @@ namespace {
 	void InitLuaClasses(GarrysMod::Lua::ILuaInterface* LUA)
 	{
 		g_ServerPlugin.LuaInit(LUA);
-
 		InitLuaClassesHook.GetTrampoline<InitLuaClasses_t>()(LUA);
 	}
 
@@ -23,7 +22,6 @@ namespace {
 	void CLuaInterface_Shutdown(GarrysMod::Lua::ILuaInterface* LUA)
 	{
 		g_ServerPlugin.LuaShutdown(LUA);
-
 		CLuaInterface_ShutdownHook.GetTrampoline<CLuaInterface_Shutdown_t>()(LUA);
 	}
 }

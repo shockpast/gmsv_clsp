@@ -3,6 +3,7 @@
 #include <GarrysMod/Lua/LuaInterface.h>
 #include <GarrysMod/InterfacePointers.hpp>
 #include <GarrysMod/ModuleLoader.hpp>
+#include <cstdint>
 #include <scanning/symbolfinder.hpp>
 
 #include <networkstringtabledefs.h>
@@ -266,7 +267,7 @@ void DataPack::CollectResults()
 			++committed;
 	}
 
-	Msg("#datapack: commited %llu/%llu files\n", static_cast<unsigned long long>(committed), static_cast<unsigned long long>(this->m_activeQueue.size()));
+	DevMsg("#datapack: commited %llu/%llu files\n", static_cast<unsigned long long>(committed), static_cast<unsigned long long>(this->m_activeQueue.size()));
 
 	this->m_activeQueue.clear();
 	this->m_bCompleted.store(false);
@@ -328,27 +329,27 @@ void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, LuaFile* file, 
 
 	INetworkStringTable* table = datapack->m_pClientLuaFiles;
 
-	int fileId = table->FindStringIndex(file->name.c_str());
+	int fileId = table->FindStringIndex(file->name);
 
 	if (fileId == INVALID_STRING_INDEX)
-		fileId = table->AddString(true, file->name.c_str());
+		fileId = table->AddString(true, file->name);
 
 	if (fileId == INVALID_STRING_INDEX)
 	{
-		DevWarning("#datapack: failed to register %s\n", file->name.c_str());
+		DevWarning("#datapack: failed to register %s\n", file->name);
 		return;
 	}
 
 	if (fileId <= 0 || static_cast<size_t>(fileId) >= INVALID_STRING_INDEX)
 	{
-		DevWarning("#datapack: invalid file id for %s\n", file->name.c_str());
+		DevWarning("#datapack: invalid file id for %s\n", file->name);
 		return;
 	}
 
 	FileTask task;
 	task.fileId = fileId;
 	task.name = file->name;
-	task.data = file->contents;
+	task.data = file->content;
 
 	{
 		std::lock_guard<std::mutex> lock(self->m_pendingMutex);

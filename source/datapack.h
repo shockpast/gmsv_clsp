@@ -15,14 +15,14 @@
 #include "sdk/datapack.h"
 
 struct FileTask {
-	int fileId = (unsigned short )-1;
+	int fileId = (unsigned short) -1;
 
 	std::string name;
 	std::string data;
 };
 
 struct ProcessedFile {
-	int fileId = (unsigned short )-1;
+	int fileId = (unsigned short) -1;
 
 	std::string name;
 	std::string contents;
@@ -32,10 +32,12 @@ struct ProcessedFile {
 };
 
 struct LuaFile {
+  ~LuaFile();
+
   int time;
-  std::string name;
-  std::string source;
-  std::string contents;
+  const char* name;
+  const char* source;
+  const char* content;
   Bootil::AutoBuffer compressed;
   int unk000;
   unsigned int timesLoadedServer;
