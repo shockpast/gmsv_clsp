@@ -22,6 +22,17 @@ gmsv_clsp is server plugin for Garry's Mod servers that rewrites client lua file
 function clsp.add(identifier: string, route: string, callback: fun(path: string, content: string): string)
 ```
 
+## example
+
+```lua
+-- it's as simple as printing 'hello world' in console
+-- just put this in autorun/server or some addon,
+-- and it will work as intended
+clsp.add('my_id', 'addons/**/*.lua', function(path, content)
+  return '-- this will be added to every file!\n' .. content
+end)
+```
+
 ## support
 
 windows or linux64 support is not planned, since most of owners use `main` or `dev` branches
