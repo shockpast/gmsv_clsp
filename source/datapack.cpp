@@ -1,6 +1,6 @@
-#include <GarrysMod/Lua/LuaInterface.h>
 #include <algorithm>
 
+#include <GarrysMod/Lua/LuaInterface.h>
 #include <GarrysMod/InterfacePointers.hpp>
 #include <GarrysMod/ModuleLoader.hpp>
 #include <scanning/symbolfinder.hpp>

@@ -1,6 +1,6 @@
-#include <GarrysMod/Lua/Types.h>
 #include <vector>
 
+#include <GarrysMod/Lua/Types.h>
 #include <GarrysMod/Lua/LuaObject.h>
 
 #include "api.h"

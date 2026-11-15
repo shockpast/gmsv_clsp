@@ -1,8 +1,8 @@
 #pragma once
 
-#include <GarrysMod/Lua/LuaInterface.h>
 #include <string>
 
+#include <GarrysMod/Lua/LuaInterface.h>
 #include <GarrysMod/Lua/Interface.h>
 #include <GarrysMod/Lua/LuaBase.h>
 #include <GarrysMod/Lua/Types.h>
