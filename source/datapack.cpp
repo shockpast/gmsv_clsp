@@ -1,3 +1,6 @@
+#include <GarrysMod/Lua/LuaInterface.h>
+#include <algorithm>
+
 #include <GarrysMod/InterfacePointers.hpp>
 #include <GarrysMod/ModuleLoader.hpp>
 #include <scanning/symbolfinder.hpp>
@@ -11,10 +14,19 @@
 
 #include "sdk/datapack.h"
 #include "datapack.h"
+#include "api.h"
+#include "plugin.h"
 #include "symbols.h"
 
 static GModDataPack* g_pDataPack;
 static IVEngineServer* g_pServer = InterfacePointers::VEngineServer();
+
+DataPack g_DataPack;
+
+DataPack::~DataPack()
+{
+	Shutdown();
+}
 
 void DataPack::Initialize()
 {
@@ -25,11 +37,55 @@ void DataPack::Initialize()
 	SymbolFinder sym;
 
 	m_hAddOrUpdateFileHook.Create(sym.Resolve(server.GetModule(), DataPack_AddOrUpdateFile_Sym.name.c_str()), reinterpret_cast<void*>(AddOrUpdateFile));
-	m_hAddOrUpdateFileHook.Enable();
 	m_hSendFileToClientHook.Create(sym.Resolve(server.GetModule(), DataPack_SendFileToClient_Sym.name.c_str()), reinterpret_cast<void*>(SendFileToClient));
-	m_hSendFileToClientHook.Enable();
 	m_hOnFilesRequestedHook.Create(sym.Resolve(server.GetModule(), DataPack_OnFilesRequested_Sym.name.c_str()), reinterpret_cast<void*>(OnFilesRequested));
-	m_hOnFilesRequestedHook.Enable();
+
+	if (!m_hAddOrUpdateFileHook.Enable())
+		Warning("#datapack: failed to install AddOrUpdateFile hook!\n");
+	if (!m_hSendFileToClientHook.Enable())
+		Warning("#datapack: failed to install SendFileToClient hook!\n");
+	if (!m_hOnFilesRequestedHook.Enable())
+		Warning("#datapack: failed to install OnFilesRequested hook!\n");
+}
+
+void DataPack::Shutdown()
+{
+	m_hOnFilesRequestedHook.Destroy();
+	m_hSendFileToClientHook.Destroy();
+	m_hAddOrUpdateFileHook.Destroy();
+
+	ResetLevel();
+	m_pSingleton = nullptr;
+}
+
+void DataPack::ResetLevel()
+{
+	m_bStopRequested.store(true);
+
+	for (auto& worker : m_workers)
+		if (worker.joinable())
+			worker.join();
+
+	m_workers.clear();
+	m_activeQueue.clear();
+
+	{
+		std::lock_guard<std::mutex> lock(m_pendingMutex);
+		m_pendingQueue.clear();
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(m_completedMutex);
+		m_completedQueue.clear();
+	}
+
+	for (auto& file : m_pFiles)
+		file.reset();
+
+	g_pDataPack = nullptr;
+	m_iActiveWorkers.store(0);
+	m_bProcessing.store(false);
+	m_bCompleted.store(false);
 }
 
 void DataPack::SendLuaFile(ProcessedFile *file, int clientId, int fileId)
@@ -51,6 +107,16 @@ void DataPack::SendLuaFile(ProcessedFile *file, int clientId, int fileId)
 	g_pServer->GMOD_SendToClient(clientId, message.GetData(), message.GetNumBitsWritten());
 }
 
+void DataPack::BuildCompressed(const std::string& contents, const decltype(ProcessedFile::hash)& header, ProcessedFile& out)
+{
+	// header
+	auto& compressed = out.compressed.Get();
+	compressed.Write(header.data(), header.size());
+
+	// content
+	Bootil::Compression::LZMA::Compress(contents.data(), contents.length() + 1, compressed, 9);
+}
+
 void DataPack::ProcessFile(FileTask& task, ProcessedFile& result)
 {
 	result.fileId = std::move(task.fileId);
@@ -59,12 +125,7 @@ void DataPack::ProcessFile(FileTask& task, ProcessedFile& result)
 
 	picosha2::hash256(result.contents.c_str(), result.contents.c_str() + result.contents.length() + 1, result.hash.begin(), result.hash.end());
 
-	// write a checksum header for client to validate if file changed
-	auto& compressed = result.compressed.Get();
-	compressed.Write(result.hash.data(), result.hash.size());
-
-	// write compressed contents of file
-	Bootil::Compression::LZMA::Compress(result.contents.data(), result.contents.length() + 1, compressed, 9);
+	this->BuildCompressed(result.contents, result.hash, result);
 }
 
 bool DataPack::CommitFile(ProcessedFile&& file)
@@ -74,7 +135,7 @@ bool DataPack::CommitFile(ProcessedFile&& file)
 
 	const int fileId = file.fileId;
 
-	if (fileId <= 0 || static_cast<size_t>(fileId) >= MAX_LUA_FILES)
+	if (fileId <= 0 || static_cast<size_t>(fileId) >= kMaxFiles)
 		return false;
 
 	g_pDataPack->m_pClientLuaFiles->SetStringUserData(fileId, static_cast<int>(file.hash.size()), file.hash.data());
@@ -89,11 +150,19 @@ bool DataPack::HasPendingFiles()
 	return !m_pendingQueue.empty();
 }
 
-void DataPack::StartProcessing()
+void DataPack::ProcessRules(std::vector<FileTask>& tasks)
 {
-	if (m_bProcessing.load() || m_bCompleted.load())
+	GarrysMod::Lua::ILuaInterface* LUA =  g_ServerPlugin.m_pLua;
+
+	if (LUA == nullptr)
 		return;
 
+	for (FileTask& task : tasks)
+		clsp::api::internal::Run(LUA, task.name, task.data);
+}
+
+void DataPack::ProcessQueue()
+{
 	std::vector<FileTask> tasks;
 
 	{
@@ -106,6 +175,8 @@ void DataPack::StartProcessing()
 	if (tasks.empty())
 		return;
 
+	this->ProcessRules(tasks);
+
 	const unsigned int hardwareThreads = std::thread::hardware_concurrency();
 
 	const size_t threadCount = std::min(tasks.size(), static_cast<size_t>(hardwareThreads > 1 ? hardwareThreads - 1 : 1));
@@ -114,6 +185,7 @@ void DataPack::StartProcessing()
 	this->m_workers.reserve(threadCount);
 	this->m_activeQueue = std::move(tasks);
 
+	this->m_bStopRequested.store(false);
 	this->m_bCompleted.store(false);
 	this->m_bProcessing.store(true);
 	this->m_iActiveWorkers.store(threadCount);
@@ -128,7 +200,7 @@ void DataPack::StartProcessing()
 			m_workers.emplace_back([this, begin, end]() -> void {
 				try
 				{
-					for (size_t j = begin; j < end; ++j)
+					for (size_t j = begin; j < end && !m_bStopRequested.load(); ++j)
 					{
 						ProcessedFile result;
 						ProcessFile(this->m_activeQueue[j], result);
@@ -194,10 +266,10 @@ void DataPack::CollectResults()
 			++committed;
 	}
 
+	Msg("#datapack: commited %llu/%llu files\n", static_cast<unsigned long long>(committed), static_cast<unsigned long long>(this->m_activeQueue.size()));
+
 	this->m_activeQueue.clear();
 	this->m_bCompleted.store(false);
-
-	Msg("*cdatapack: commited %llu/%llu files\n", static_cast<unsigned long long>(committed), static_cast<unsigned long long>(completed.size()));
 }
 
 void DataPack::SendFileToClient(GModDataPack* datapack /* ecx */, int clientId, int fileId)
@@ -251,17 +323,8 @@ void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, GarrysMod::Lua:
 
 	DataPack* self = m_pSingleton;
 
-	if (self == nullptr)
-	{
-		Error("DataPack singleton doesn't exist at the moment of function call.\n");
+	if (self == nullptr || file == nullptr)
 		return;
-	}
-
-	if (file == nullptr)
-	{
-		DevWarning("File doesn't exist but was provided for add?!\n");
-		return;
-	}
 
 	INetworkStringTable* table = datapack->m_pClientLuaFiles;
 
@@ -272,13 +335,13 @@ void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, GarrysMod::Lua:
 
 	if (fileId == INVALID_STRING_INDEX)
 	{
-		DevWarning("*cdatapack: failed to register %s\n", file->name.c_str());
+		DevWarning("#datapack: failed to register %s\n", file->name.c_str());
 		return;
 	}
 
 	if (fileId <= 0 || static_cast<size_t>(fileId) >= INVALID_STRING_INDEX)
 	{
-		DevWarning("*cdatapack: invalid file id for %s\n", file->name.c_str());
+		DevWarning("#datapack: invalid file id for %s\n", file->name.c_str());
 		return;
 	}
 
@@ -291,8 +354,6 @@ void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, GarrysMod::Lua:
 		std::lock_guard<std::mutex> lock(self->m_pendingMutex);
 		self->m_pendingQueue.emplace_back(std::move(task));
 	}
-
-	DevMsg(2, "Added %s into CDataPack file queue.\n", file->name.c_str());
 }
 
 void DataPack::OnFilesRequested(GModDataPack* datapack /* ecx */, int clientId, bf_read* message, int bits)
@@ -305,8 +366,6 @@ void DataPack::OnFilesRequested(GModDataPack* datapack /* ecx */, int clientId, 
 
 	const int count = bits / 16;
 	const int numStrings = datapack->m_pClientLuaFiles->GetNumStrings();
-
-	Msg("*cdatapack: count = %i\n", count);
 
 	if (count > numStrings)
 		return;

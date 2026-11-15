@@ -2,6 +2,8 @@
 
 #include <engine/iserverplugin.h>
 
+namespace GarrysMod { namespace Lua { class ILuaInterface; } }
+
 class CServerPlugin : public IServerPluginCallbacks
 {
 public:
@@ -28,6 +30,11 @@ public:
 	virtual void			OnQueryCvarValueFinished(QueryCvarCookie_t iCookie, edict_t* pPlayerEntity, EQueryCvarValueStatus eStatus, const char* pCvarName, const char* pCvarValue);
 	virtual void			OnEdictAllocated(edict_t* edict);
 	virtual void			OnEdictFreed(const edict_t* edict);
-	virtual bool			LuaInit();
-	virtual void			LuaShutdown();
+	virtual bool			LuaInit(GarrysMod::Lua::ILuaInterface* LUA);
+	virtual void			LuaShutdown(GarrysMod::Lua::ILuaInterface* LUA);
+
+public:
+	GarrysMod::Lua::ILuaInterface* m_pLua = nullptr;
 };
+
+extern CServerPlugin g_ServerPlugin;

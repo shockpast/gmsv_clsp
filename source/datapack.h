@@ -35,33 +35,39 @@ class DataPack {
   /* functions */
 public:
   DataPack() = default;
+  ~DataPack();
 
   void Initialize();
+  void Shutdown();
+  void ResetLevel();
   bool IsProcessing() const { return m_bProcessing.load(); };
   bool HasCompleted() const { return !IsProcessing() && m_bCompleted.load(); };
   bool HasPendingFiles();
-  void StartProcessing();
+  void ProcessRules(std::vector<FileTask>& tasks);
+  void ProcessQueue();
   void CollectResults();
 
   static void SendFileToClient(GModDataPack* datapack, int clientId, int fileId);
   static void AddOrUpdateFile(GModDataPack* datapack, GarrysMod::Lua::File* file, bool recompress);
   static void OnFilesRequested(GModDataPack* datapack, int clientId, bf_read* message, int bits);
 
-private:
+  private:
   void SendLuaFile(ProcessedFile* file, int clientId, int fileId);
+  void BuildCompressed(const std::string& contents, const decltype(ProcessedFile::hash) & header, ProcessedFile& out);
   void ProcessFile(FileTask& task, ProcessedFile& out);
   bool CommitFile(ProcessedFile&& file);
 
   /* variables */
 public:
-  static constexpr size_t MAX_LUA_FILES = 2 << 12;
+  static constexpr size_t kMaxFiles = 2 << 12;
 
 private:
   std::atomic<size_t> m_iActiveWorkers { 0 };
   std::atomic<bool> m_bProcessing { false };
   std::atomic<bool> m_bCompleted { false };
+  std::atomic<bool> m_bStopRequested { false };
 
-  std::unique_ptr<ProcessedFile> m_pFiles[MAX_LUA_FILES]{};
+  std::unique_ptr<ProcessedFile> m_pFiles[kMaxFiles]{};
 
   // being currently worked on
   std::vector<FileTask> m_activeQueue;
@@ -83,4 +89,4 @@ private:
   inline static DataPack* m_pSingleton;
 };
 
-static DataPack g_DataPack;
+extern DataPack g_DataPack;
