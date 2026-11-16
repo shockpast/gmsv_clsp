@@ -5,6 +5,7 @@
 
 #include "api.h"
 #include "glob.h"
+#include "version.h"
 
 namespace {
 	std::vector<Rule> rules;
@@ -53,7 +54,7 @@ void clsp::api::Initialize(GarrysMod::Lua::ILuaBase* LUA)
 		LUA->PushCFunction(clsp_add);
 		LUA->SetField(-2, "add");
 
-		LUA->PushString("b005");
+		LUA->PushString(VERSION);
 		LUA->SetField(-2, "VERSION");
 	LUA->SetField(-2, "clsp");
 
@@ -79,7 +80,6 @@ void clsp::api::internal::Run(GarrysMod::Lua::ILuaBase* LUA, const std::string& 
 		if (rule.reference == -1)
 			continue;
 
-		Msg("route=%s, path=%s, match=%i\n", rule.route.c_str(), path.c_str(), clsp::glob::Match(rule.route, path));
 		if (!clsp::glob::Match(rule.route, path))
 			continue;
 

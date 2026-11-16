@@ -1,9 +1,9 @@
 #include <algorithm>
+#include <cstdint>
 
 #include <GarrysMod/Lua/LuaInterface.h>
 #include <GarrysMod/InterfacePointers.hpp>
 #include <GarrysMod/ModuleLoader.hpp>
-#include <cstdint>
 #include <scanning/symbolfinder.hpp>
 
 #include <networkstringtabledefs.h>
