@@ -3,7 +3,7 @@
 
 #include <GarrysMod/Lua/LuaInterface.h>
 #include <GarrysMod/InterfacePointers.hpp>
-#include <GarrysMod/ModuleLoader.hpp>
+#include <GarrysMod/FactoryLoader.hpp>
 #include <scanning/symbolfinder.hpp>
 
 #include <networkstringtabledefs.h>
@@ -34,19 +34,23 @@ void DataPack::Initialize()
 	// hooks must access our class somehow
 	m_pSingleton = this;
 
-	SourceSDK::ModuleLoader server("server");
+	SourceSDK::FactoryLoader server("server");
 	SymbolFinder sym;
 
-	m_hAddOrUpdateFileHook.Create(sym.Resolve(server.GetModule(), DataPack_AddOrUpdateFile_Sym.name.c_str()), reinterpret_cast<void*>(AddOrUpdateFile));
-	m_hSendFileToClientHook.Create(sym.Resolve(server.GetModule(), DataPack_SendFileToClient_Sym.name.c_str()), reinterpret_cast<void*>(SendFileToClient));
-	m_hOnFilesRequestedHook.Create(sym.Resolve(server.GetModule(), DataPack_OnFilesRequested_Sym.name.c_str()), reinterpret_cast<void*>(OnFilesRequested));
+	const Symbol _DataPack_AddOrUpdateFile_Sym = GetPlatformSymbol(DataPack_AddOrUpdateFile_Sym);
+	const Symbol _DataPack_SendFileToClient_Sym = GetPlatformSymbol(DataPack_SendFileToClient_Sym);
+	const Symbol _DataPack_OnFilesRequested_Sym = GetPlatformSymbol(DataPack_OnFilesRequested_Sym);
+
+	m_hAddOrUpdateFileHook.Create(sym.Resolve(server.GetModule(), _DataPack_AddOrUpdateFile_Sym.name.c_str(), _DataPack_AddOrUpdateFile_Sym.length), reinterpret_cast<void*>(AddOrUpdateFile));
+	m_hSendFileToClientHook.Create(sym.Resolve(server.GetModule(), _DataPack_SendFileToClient_Sym.name.c_str(), _DataPack_SendFileToClient_Sym.length), reinterpret_cast<void*>(SendFileToClient));
+	m_hOnFilesRequestedHook.Create(sym.Resolve(server.GetModule(), _DataPack_OnFilesRequested_Sym.name.c_str(), _DataPack_OnFilesRequested_Sym.length), reinterpret_cast<void*>(OnFilesRequested));
 
 	if (!m_hAddOrUpdateFileHook.Enable())
-		Warning("#datapack: failed to install AddOrUpdateFile hook!\n");
+		Warning("#datapack: AddOrUpdateFile hook failed to enable!\n");
 	if (!m_hSendFileToClientHook.Enable())
-		Warning("#datapack: failed to install SendFileToClient hook!\n");
+		Warning("#datapack: SendFileToClient hook failed to enable!\n");
 	if (!m_hOnFilesRequestedHook.Enable())
-		Warning("#datapack: failed to install OnFilesRequested hook!\n");
+		Warning("#datapack: OnFilesRequested hook failed to enable!\n");
 }
 
 void DataPack::Shutdown()
@@ -273,7 +277,7 @@ void DataPack::CollectResults()
 	this->m_bCompleted.store(false);
 }
 
-void DataPack::SendFileToClient(GModDataPack* datapack /* ecx */, int clientId, int fileId)
+void DataPack::SendFileToClient(GModDataPack* datapack, int clientId, int fileId)
 {
 	if (datapack == nullptr)
 	{
@@ -357,7 +361,7 @@ void DataPack::AddOrUpdateFile(GModDataPack* datapack /* ecx */, LuaFile* file, 
 	}
 }
 
-void DataPack::OnFilesRequested(GModDataPack* datapack /* ecx */, int clientId, bf_read* message, int bits)
+void DataPack::OnFilesRequested(GModDataPack* datapack, int clientId, bf_read* message, int bits)
 {
 	if (!datapack || !datapack->m_pClientLuaFiles || !message)
 		return;

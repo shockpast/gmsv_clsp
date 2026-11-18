@@ -1,5 +1,6 @@
 development/module/projects
-development/module/premake5
+development/module/premake5*
+# vscode-clangd (visual studio sucks ass)
 .clangd
 build.sh
 gen.sh

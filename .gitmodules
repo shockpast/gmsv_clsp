@@ -1,3 +1,7 @@
 [submodule "development/garrysmod_common"]
 	path = development/garrysmod_common
 	url = https://github.com/danielga/garrysmod_common.git
+[submodule "development/garrysmod_common_x86_64"]
+	path = development/garrysmod_common_x86_64
+	url = https://github.com/danielga/garrysmod_common
+	branch = x86-64-support-sourcesdk

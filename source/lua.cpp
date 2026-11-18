@@ -12,17 +12,19 @@
 
 namespace {
 	static Detouring::Hook InitLuaClassesHook;
-	void InitLuaClasses(GarrysMod::Lua::ILuaInterface* LUA)
+	static void InitLuaClasses(GarrysMod::Lua::ILuaInterface* LUA)
 	{
-		g_ServerPlugin.LuaInit(LUA);
 		InitLuaClassesHook.GetTrampoline<InitLuaClasses_t>()(LUA);
+		g_ServerPlugin.LuaInit(LUA);
 	}
 
 	static Detouring::Hook CLuaInterface_ShutdownHook;
-	void CLuaInterface_Shutdown(GarrysMod::Lua::ILuaInterface* LUA)
+	static void CLuaInterface_Shutdown(GarrysMod::Lua::ILuaInterface* LUA)
 	{
-		g_ServerPlugin.LuaShutdown(LUA);
 		CLuaInterface_ShutdownHook.GetTrampoline<CLuaInterface_Shutdown_t>()(LUA);
+
+		if (g_ServerPlugin.m_pLua == LUA)
+			g_ServerPlugin.LuaShutdown(LUA);
 	}
 }
 
@@ -32,8 +34,11 @@ void clsp::lua::Initialize()
 	SourceSDK::ModuleLoader lua_shared("lua_shared");
 	SymbolFinder sym;
 
-	InitLuaClassesHook.Create(sym.Resolve(server.GetModule(), InitLuaClasses_Sym.name.c_str()), reinterpret_cast<void*>(InitLuaClasses));
-	CLuaInterface_ShutdownHook.Create(sym.Resolve(lua_shared.GetModule(), CLuaInterface_Shutdown_Sym.name.c_str()), reinterpret_cast<void*>(CLuaInterface_Shutdown));
+	const Symbol _InitLuaClasses = GetPlatformSymbol(InitLuaClasses_Sym);
+	const Symbol _CLuaInterface_Shutdown = GetPlatformSymbol(CLuaInterface_Shutdown_Sym);
+
+	InitLuaClassesHook.Create(sym.Resolve(server.GetModule(), _InitLuaClasses.name.c_str(), _InitLuaClasses.length), reinterpret_cast<void*>(InitLuaClasses));
+	CLuaInterface_ShutdownHook.Create(sym.Resolve(lua_shared.GetModule(), _CLuaInterface_Shutdown.name.c_str(), _CLuaInterface_Shutdown.length), reinterpret_cast<void*>(CLuaInterface_Shutdown));
 
 	if (!InitLuaClassesHook.Enable())
 		Warning("#datapack: InitLuaClasses hook failed to enable!\n");
