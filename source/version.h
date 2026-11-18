@@ -1,3 +1,3 @@
 #pragma once
 
-constexpr const char* VERSION = "b006";
+constexpr const char* VERSION = "b007b";
