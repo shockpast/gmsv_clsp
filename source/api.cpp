@@ -13,28 +13,18 @@ namespace {
 	LUA_FUNCTION(clsp_add)
 	{
 		LUA->CheckType(1, GarrysMod::Lua::Type::STRING);
-		LUA->CheckType(2, GarrysMod::Lua::Type::STRING);
-		LUA->CheckType(3, GarrysMod::Lua::Type::FUNCTION);
+		LUA->CheckType(2, GarrysMod::Lua::Type::FUNCTION);
 
-		const char* identifier = LUA->GetString(1);
-		const char* route = LUA->GetString(2);
+		const char* route = LUA->GetString(1);
 
-		// Check for duplicate identifiers.
-		for (const auto& rule : rules)
-		{
-			if (rule.identifier == identifier)
-			{
-				LUA->ThrowError("Rule identifier already exists");
+		for (auto rule : rules)
+			if (rule.route == route)
 				return 0;
-			}
-		}
 
-		// Create a Lua reference to the callback.
-		LUA->Push(3);
+		LUA->Push(2);
 		int reference = LUA->ReferenceCreate();
 
 		Rule rule;
-		rule.identifier = identifier;
 		rule.route = route;
 		rule.reference = reference;
 

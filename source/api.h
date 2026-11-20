@@ -8,7 +8,6 @@
 #include <GarrysMod/Lua/Types.h>
 
 struct Rule {
-  std::string identifier;
   std::string route;
   int reference = -1;
 };
